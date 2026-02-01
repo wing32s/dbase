@@ -571,6 +571,7 @@ begin
   if Count > 0 then
     AssertEqualsInt(0, RowIdAt(Ids, 0), 'First row should be 0');
   FreeMem(Ids, MaxResults * SizeOf(LongInt));
+  DBFilterReleaseGlobals;
   MemoryReport('After FetchNoFilters');
   EndTest;
 end;
@@ -591,6 +592,7 @@ begin
   AssertTrue(Count > 0, 'Should find some 1993 games');
   WriteLn('  Found ', Count, ' games from 1993');
   FreeMem(Ids, MaxResults * SizeOf(LongInt));
+  DBFilterReleaseGlobals;
   MemoryReport('After FetchExactNum');
   EndTest;
 end;
@@ -612,6 +614,7 @@ begin
   { May or may not find matches depending on case/padding }
   AssertTrue(Count >= 0, 'Count should be non-negative');
   FreeMem(Ids, MaxResults * SizeOf(LongInt));
+  DBFilterReleaseGlobals;
   MemoryReport('After FetchExactStr');
   EndTest;
 end;
@@ -632,6 +635,7 @@ begin
   AssertTrue(Count > 0, 'Should find games in 1990-1999 range');
   WriteLn('  Found ', Count, ' games from the 1990s');
   FreeMem(Ids, MaxResults * SizeOf(LongInt));
+  DBFilterReleaseGlobals;
   MemoryReport('After FetchFieldRange');
   EndTest;
 end;
@@ -652,6 +656,7 @@ begin
   AssertTrue(Count > 0, 'Should find devs starting with N');
   WriteLn('  Found ', Count, ' games with DEVNAME starting "N"');
   FreeMem(Ids, MaxResults * SizeOf(LongInt));
+  DBFilterReleaseGlobals;
   MemoryReport('After FetchStartsWith');
   EndTest;
 end;
@@ -673,6 +678,7 @@ begin
   WriteLn('  Found ', Count, ' games (1993, 2+ players)');
   AssertTrue(Count >= 0, 'Count should be non-negative');
   FreeMem(Ids, MaxResults * SizeOf(LongInt));
+  DBFilterReleaseGlobals;
   MemoryReport('After FetchCombined');
   EndTest;
 end;
@@ -704,6 +710,7 @@ begin
     AssertEqualsInt(50, RowIdAt(Ids, 0), 'Second batch should start at row 50');
 
   FreeMem(Ids, MaxResults * SizeOf(LongInt));
+  DBFilterReleaseGlobals;
   MemoryReport('After FetchResumption');
   EndTest;
 end;
@@ -945,6 +952,7 @@ begin
       WriteLn('--- Phase 5: Skipped (EnablePhase5 = False) ---');
 
     CloseGamesDb;
+    DBFilterReleaseGlobals;
   end
   else
     WriteLn('Skipping Phase 4/5 (GAMES3.DBF not available)');

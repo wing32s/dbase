@@ -719,48 +719,14 @@ procedure TestQuerySegmented1990s;
 var
   Specs: THeapFieldSpecArray;
   Results: TSegmentedResults;
-  I: Integer;
-  YearStr: string;
-  YearVal: Word;
-  RowPtr: Pointer;
-  HM: THeapMap;
 begin
   BeginTest('QuerySegmented - filter Year 1990-1999');
   MemoryReport('Before 1990s query');
-  WriteLn('DBF fields (index:name:type):');
-  for I := 1 to LargeHeader.FieldCount do
-    WriteLn('  ', I, ': ', LargeHeader.Fields[I].Name, ' (', LargeHeader.Fields[I].FieldType, ')');
   FillChar(Specs, SizeOf(Specs), 0);
   Specs[1].DBFFieldIdx := 0;
   Specs[1].HeapFieldType := hftWord;
   Specs[2].DBFFieldIdx := 4;
   Specs[2].HeapFieldType := hftWord;
-
-  if LargeRowCount > 0 then
-  begin
-    Ok := DBFFileSeekToRow(LargeDbf, 0);
-    GetMem(RowPtr, LargeHeader.RecordSize);
-    if RowPtr <> nil then
-    begin
-      Ok := DBFFileReadRow(LargeDbf, RowPtr, LargeHeader.RecordSize);
-      YearStr := DBFFieldGetStr(RowPtr, LargeHeader, Specs[2].DBFFieldIdx);
-      WriteLn('DBF Year field raw (row 0): "', YearStr, '"');
-      FreeMem(RowPtr, LargeHeader.RecordSize);
-    end;
-  end;
-
-  FillChar(HM, SizeOf(HM), 0);
-  Ok := BuildHeapMap(LargeDbf, Specs, 2, 8, HM);
-  if Ok then
-  begin
-    WriteLn('Heap Year samples (first 5 records):');
-    for I := 0 to 4 do
-    begin
-      YearVal := HeapGetWord(HM, I, 2);
-      WriteLn('  Heap Year[', I, '] = ', YearVal);
-    end;
-    Ok := FreeHeapRecords(HM);
-  end;
 
   GetMem(Results.RecNos, MaxResults * SizeOf(LongInt));
   Results.MaxCount := MaxResults;
@@ -920,6 +886,48 @@ begin
   EndTest;
 end;
 
+procedure TestQuerySegmentedPaged1990s;
+var
+  Specs: THeapFieldSpecArray;
+  Results: TSegmentedResults;
+  NextRecNo: LongInt;
+  TotalFound: LongInt;
+  Batch: Integer;
+begin
+  BeginTest('QuerySegmentedPaged - filter Year 1990-1999 in batches');
+  FillChar(Specs, SizeOf(Specs), 0);
+  Specs[1].DBFFieldIdx := 0;
+  Specs[1].HeapFieldType := hftWord;
+  Specs[2].DBFFieldIdx := 4;
+  Specs[2].HeapFieldType := hftWord;
+
+  GetMem(Results.RecNos, MaxResults * SizeOf(LongInt));
+  Results.MaxCount := MaxResults;
+  Results.Count := 0;
+
+  Ok := SetCurrentFilterFunc(FilterYear1990s);
+  AssertTrue(Ok, 'Filter set should succeed');
+
+  NextRecNo := 0;
+  TotalFound := 0;
+  Batch := 0;
+  repeat
+    Inc(Batch);
+    Results.Count := 0;
+    Ok := QuerySegmentedPaged(LargeDbf, Specs, 2, 8, NextRecNo, 500, Results, NextRecNo);
+    AssertTrue(Ok, 'QuerySegmentedPaged should succeed');
+    TotalFound := TotalFound + Results.Count;
+    WriteLn('  Batch ', Batch, ': ', Results.Count, ' matches, nextRec=', NextRecNo);
+  until (Results.Count = 0) or (NextRecNo >= LargeRowCount);
+
+  WriteLn('  Total matches found: ', TotalFound);
+  AssertTrue(TotalFound >= 4000, 'Paged query should find at least 4000 matches');
+
+  FreeMem(Results.RecNos, MaxResults * SizeOf(LongInt));
+  EndTest;
+end;
+
+
 { ================================================================== }
 { Main program                                                        }
 { ================================================================== }
@@ -996,6 +1004,7 @@ begin
     TestQuerySegmentedNilDbf;
     TestQuerySegmentedNilResults;
     TestQuerySegmentedSegmentation;
+    TestQuerySegmentedPaged1990s;
     MemoryReport('After segmented tests');
 
     CloseLargeDb;

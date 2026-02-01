@@ -408,13 +408,10 @@ end;
 { Date conversion using explicit Year/Month/Day parts }
 function DateToJDNParts(Year, Month, Day: Integer): LongInt;
 var
-  A, Y, M: LongInt;
+  DateStr: string;
 begin
-  A := (14 - Month) div 12;
-  Y := Year + 4800 - A;
-  M := Month + (12 * A) - 3;
-  DateToJDNParts := Day + ((153 * M + 2) div 5) + (365 * Y) + (Y div 4) -
-                    (Y div 100) + (Y div 400) - 32045;
+  DateStr := FormatDate(Year, Month, Day);
+  DateToJDNParts := DateToJDN(DateStr);
 end;
 
 { Convert dBASE date string "YYYYMMDD" to JDN, returns 0 if invalid }

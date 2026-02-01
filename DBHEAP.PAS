@@ -133,6 +133,16 @@ function QuerySegmented(var Dbf: PDBFFile;
                         TargetRecordSize: Byte;
                         var Results: TSegmentedResults): Boolean;
 
+{ Process in segments starting at StartRecNo (0-based); returns NextRecNo for paging }
+function QuerySegmentedPaged(var Dbf: PDBFFile;
+                             var FieldSpecs: THeapFieldSpecArray;
+                             FieldCount: Integer;
+                             TargetRecordSize: Byte;
+                             StartRecNo: LongInt;
+                             PageSize: Word;
+                             var Results: TSegmentedResults;
+                             var NextRecNo: LongInt): Boolean;
+
 implementation
 
 uses DBFUTIL;
@@ -929,6 +939,104 @@ begin
 
   WriteLn('Total matches: ', Results.Count);
   QuerySegmented := True;
+end;
+
+function FilterSegmentPaged(var Segment: THeapSegment;
+                            var Results: TSegmentedResults;
+                            var NextRecNo: LongInt): Boolean;
+var
+  I: Word;
+  RecNo: LongInt;
+begin
+  if Results.RecNos = nil then
+  begin
+    FilterSegmentPaged := False;
+    Exit;
+  end;
+  FilterSegmentPaged := True;
+  for I := 0 to Segment.ActualCount - 1 do
+  begin
+    if Results.Count >= Results.MaxCount then
+    begin
+      NextRecNo := Segment.StartRecNo + I;
+      Exit;
+    end;
+    if CurrentFilterFunc(Segment.HeapMap, I) then
+    begin
+      RecNo := Segment.StartRecNo + I;
+      Results.RecNos^[Results.Count] := RecNo + 1;
+      Inc(Results.Count);
+    end;
+  end;
+  NextRecNo := Segment.EndRecNo + 1;
+end;
+
+function QuerySegmentedPaged(var Dbf: PDBFFile;
+                             var FieldSpecs: THeapFieldSpecArray;
+                             FieldCount: Integer;
+                             TargetRecordSize: Byte;
+                             StartRecNo: LongInt;
+                             PageSize: Word;
+                             var Results: TSegmentedResults;
+                             var NextRecNo: LongInt): Boolean;
+var
+  TotalRecords: LongInt;
+  CurrentRecNo: LongInt;
+  Segment: THeapSegment;
+  Ok: Boolean;
+  PageLimit: Word;
+  OrigMax: Word;
+begin
+  QuerySegmentedPaged := False;
+  NextRecNo := StartRecNo;
+  if Dbf = nil then
+    Exit;
+  if Results.RecNos = nil then
+  begin
+    Results.Count := 0;
+    Exit;
+  end;
+  if Results.MaxCount = 0 then
+  begin
+    Results.Count := 0;
+    Exit;
+  end;
+  if StartRecNo < 0 then
+    StartRecNo := 0;
+
+  TotalRecords := DBFFileGetActualRowCount(Dbf);
+  Results.Count := 0;
+  CurrentRecNo := StartRecNo;
+  PageLimit := Results.MaxCount;
+  if (PageSize > 0) and (PageSize < PageLimit) then
+    PageLimit := PageSize;
+  OrigMax := Results.MaxCount;
+  Results.MaxCount := PageLimit;
+
+  while (CurrentRecNo < TotalRecords) and (Results.Count < Results.MaxCount) do
+  begin
+    Ok := LoadHeapSegment(Dbf, FieldSpecs, FieldCount, TargetRecordSize,
+                          CurrentRecNo, Segment);
+    if not Ok then
+    begin
+      Results.MaxCount := OrigMax;
+      Exit;
+    end;
+
+    Ok := FilterSegmentPaged(Segment, Results, CurrentRecNo);
+    if not Ok then
+    begin
+      Ok := FreeHeapRecords(Segment.HeapMap);
+      Results.MaxCount := OrigMax;
+      Exit;
+    end;
+
+    Ok := FreeHeapRecords(Segment.HeapMap);
+  end;
+
+  NextRecNo := CurrentRecNo;
+  Results.MaxCount := OrigMax;
+  QuerySegmentedPaged := True;
 end;
 
 end.

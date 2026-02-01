@@ -103,29 +103,54 @@ def create_large_dbf():
     print(f"This exceeds 8K limit by {target_records - 8192} records")
     print()
     
-    # Simple approach: just copy the file multiple times and concatenate
-    print("Creating large DBF by concatenating copies...")
+    # Correct approach: write one header, then append only record bytes for each copy
+    print("Creating large DBF by appending records (no duplicate headers)...")
     
     try:
-        # Read the original file
+        # Read the original file header and record layout
         with open(source_dbf, 'rb') as f:
-            original_data = f.read()
+            header = f.read(32)
+            if len(header) < 32:
+                print("Source DBF header is too short")
+                return False
+            # DBF header: record count at bytes 4-7, header size at 8-9, record size at 10-11
+            original_count = int.from_bytes(header[4:8], byteorder='little', signed=False)
+            header_size = int.from_bytes(header[8:10], byteorder='little', signed=False)
+            record_size = int.from_bytes(header[10:12], byteorder='little', signed=False)
+            if header_size == 0 or record_size == 0:
+                print("Invalid header or record size in source DBF")
+                return False
+            f.seek(0)
+            header_block = f.read(header_size)
+            if len(header_block) < header_size:
+                print("Failed to read full DBF header")
+                return False
+            # Read only the record bytes (exclude any terminator)
+            record_bytes_len = original_count * record_size
+            f.seek(header_size)
+            record_data = f.read(record_bytes_len)
+            if len(record_data) < record_bytes_len:
+                print("Source DBF appears truncated (not enough record data)")
+                return False
         
-        # Write the concatenated file
+        # Write the new DBF: header once, then record data repeated
         with open(target_dbf, 'wb') as f:
+            f.write(header_block)
             for i in range(copies_needed):
-                f.write(original_data)
-                print(f"Added copy {i+1}/{copies_needed}")
+                f.write(record_data)
+                print(f"Added record batch {i+1}/{copies_needed}")
+            # DBF EOF marker
+            f.write(b'\x1A')
         
         print(f"\nSuccessfully created {target_dbf}")
         print(f"File size: {os.path.getsize(target_dbf)} bytes")
         
         # Verify the created file and update record count
         try:
-            # First, update the record count in the DBF header
+            # Update the record count in the DBF header
             with open(target_dbf, 'r+b') as f:
                 # Read the header
-                header_data = bytearray(32)  # DBF header is 32 bytes
+                header_data = bytearray(32)
                 f.readinto(header_data)
                 
                 # Update record count (bytes 4-7, little-endian)

@@ -31,9 +31,8 @@ echo [TESTS] Compile + run>>%LOG%
 cd tests
 
 for %%t in (*.pas) do call compile %%t
-for %%t in (*.exe) do call runtest %%t
-
 cd ..
+call runtests.bat
 
 :done
 echo.>>%LOG%

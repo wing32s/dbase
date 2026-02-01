@@ -99,6 +99,9 @@ procedure PackFilterIndexFile(var Filter: TDBFilterSpec; FileName: string);
 function UnpackFilterValue(var Filter: TDBFilterSpec): string;
 function UnpackFilterIndexFile(var Filter: TDBFilterSpec): string;
 
+{ Release global buffer used by DBFetchNextMatches }
+procedure DBFilterReleaseGlobals;
+
 { Julian Day Number (JDN) conversion functions }
 function DateToJDN(Year, Month, Day: Integer): LongInt;
 { Convert Gregorian calendar date to Julian Day Number }
@@ -1466,6 +1469,17 @@ end;
 function UnpackFilterIndexFile(var Filter: TDBFilterSpec): string;
 begin
   UnpackFilterIndexFile := Filter.IndexFileName;
+end;
+
+procedure DBFilterReleaseGlobals;
+begin
+  if GlobalRowBuf <> nil then
+  begin
+    FreeMem(GlobalRowBuf, GlobalRecordSize);
+    GlobalRowBuf := nil;
+  end;
+  GlobalRecordSize := 0;
+  GlobalHeaderLoaded := False;
 end;
 
 begin
