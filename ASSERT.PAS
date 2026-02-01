@@ -12,6 +12,7 @@ procedure AssertTrue(Cond: Boolean; Msg: string);
 procedure AssertFalse(Cond: Boolean; Msg: string);
 procedure AssertEqualsInt(Expected, Actual: LongInt; Msg: string);
 procedure AssertEqualsStr(Expected, Actual: string; Msg: string);
+procedure AssertNotNil(Ptr: Pointer; Msg: string);
 procedure ResetAsserts;
 procedure PrintSummary;
 
@@ -68,10 +69,20 @@ end;
 procedure AssertEqualsStr(Expected, Actual: string; Msg: string);
 begin
   AssertTrue(Expected = Actual, Msg);
-  if (CurrentFailed) then
+  if (Expected <> Actual) then
   begin
     WriteLn('   >> EXPECTED: [', Expected, ']');
     WriteLn('   >> ACTUAL: [', Actual, ']');
+  end;
+end;
+
+procedure AssertNotNil(Ptr: Pointer; Msg: string);
+begin
+  AssertTrue(Ptr <> nil, Msg);
+  if (CurrentFailed) then
+  begin
+    WriteLn('   >> EXPECTED: not nil');
+    WriteLn('   >> ACTUAL: nil');
   end;
 end;
 

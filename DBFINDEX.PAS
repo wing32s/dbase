@@ -4,24 +4,28 @@ unit DBFINDEX;
 
 interface
 
-uses DBF;
+uses DBFUTIL;
+
+type
+  PRowIdArray = ^TRowIdArray;
+  TRowIdArray = array[0..0] of LongInt;  { Open array for pointer math }
 
 function FindCharacterExact(NdxFileName, Key: string;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 function FindCharacterBegins(NdxFileName, Prefix: string;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 function FindNumberExact(NdxFileName: string; Value: LongInt;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 function FindNumberRange(NdxFileName: string; MinValue, MaxValue: LongInt;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 function CountNumberExact(NdxFileName: string; Value: LongInt;
   var Count: LongInt): Boolean;
 function CountNumberRange(NdxFileName: string; MinValue, MaxValue: LongInt;
   var Count: LongInt): Boolean;
 function FindDateExact(NdxFileName, DateStr: string;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 function FindDateRange(NdxFileName, StartDateStr, EndDateStr: string;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 function CountDateExact(NdxFileName, DateStr: string; var Count: LongInt): Boolean;
 function CountDateRange(NdxFileName, StartDateStr, EndDateStr: string;
   var Count: LongInt): Boolean;
@@ -433,7 +437,7 @@ begin
 end;
 
 function FindCharacterExact(NdxFileName, Key: string;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 var
   F: File;
   H: TNDXHeader;
@@ -450,6 +454,11 @@ var
   Cmp: Integer;
 begin
   Count := 0;
+  if RowIds = nil then
+  begin
+    FindCharacterExact := False;
+    Exit;
+  end;
   if MaxCount <= 0 then
   begin
     FindCharacterExact := False;
@@ -486,7 +495,7 @@ begin
     begin
       if RecnoOut <> 0 then
       begin
-        RowIds[Count] := RecnoOut;
+        RowIds^[Count] := RecnoOut;
         Inc(Count);
       end;
     end;
@@ -553,7 +562,7 @@ begin
 end;
 
 function FindCharacterBegins(NdxFileName, Prefix: string;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 var
   F: File;
   H: TNDXHeader;
@@ -570,6 +579,11 @@ var
   RecnoOut: LongInt;
 begin
   Count := 0;
+  if RowIds = nil then
+  begin
+    FindCharacterBegins := False;
+    Exit;
+  end;
   if MaxCount <= 0 then
   begin
     FindCharacterBegins := False;
@@ -617,7 +631,7 @@ begin
     begin
       if RecnoOut <> 0 then
       begin
-        RowIds[Count] := RecnoOut;
+        RowIds^[Count] := RecnoOut;
         Inc(Count);
       end;
     end;
@@ -628,7 +642,7 @@ begin
 end;
 
 function FindNumberExact(NdxFileName: string; Value: LongInt;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 var
   F: File;
   H: TNDXHeader;
@@ -645,6 +659,11 @@ var
   LastChild: LongInt;
 begin
   Count := 0;
+  if RowIds = nil then
+  begin
+    FindNumberExact := False;
+    Exit;
+  end;
   if MaxCount <= 0 then
   begin
     FindNumberExact := False;
@@ -693,7 +712,7 @@ begin
     begin
       if RecnoOut <> 0 then
       begin
-        RowIds[Count] := RecnoOut;
+        RowIds^[Count] := RecnoOut;
         Inc(Count);
       end;
     end;
@@ -704,7 +723,7 @@ begin
 end;
 
 function FindNumberRange(NdxFileName: string; MinValue, MaxValue: LongInt;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 var
   F: File;
   H: TNDXHeader;
@@ -721,6 +740,11 @@ var
   LastChild: LongInt;
 begin
   Count := 0;
+  if RowIds = nil then
+  begin
+    FindNumberRange := False;
+    Exit;
+  end;
   if MaxCount <= 0 then
   begin
     FindNumberRange := False;
@@ -770,13 +794,17 @@ begin
   while (Count < MaxCount) and NextEntry(F, H, Stack, StackIdx, Depth, KeyOut, RecnoOut) do
   begin
     KeyStrToKey8(KeyOut, KeyVal);
-    if CompareKey8(KeyVal, MaxKey) > 0 then
+    if CompareKey8(KeyVal, MinKey) < 0 then
+    begin
+      { Skip keys below the lower bound }
+    end
+    else if CompareKey8(KeyVal, MaxKey) > 0 then
       Depth := 0
     else
     begin
       if RecnoOut <> 0 then
       begin
-        RowIds[Count] := RecnoOut;
+        RowIds^[Count] := RecnoOut;
         Inc(Count);
       end;
     end;
@@ -889,7 +917,11 @@ begin
   while NextEntry(F, H, Stack, StackIdx, Depth, KeyOut, RecnoOut) do
   begin
     KeyStrToKey8(KeyOut, KeyVal);
-    if CompareKey8(KeyVal, MaxKey) > 0 then
+    if CompareKey8(KeyVal, MinKey) < 0 then
+    begin
+      { Skip keys below the lower bound }
+    end
+    else if CompareKey8(KeyVal, MaxKey) > 0 then
       Depth := 0
     else if RecnoOut <> 0 then
       Inc(Count);
@@ -994,7 +1026,7 @@ begin
 end;
 
 function FindDateExact(NdxFileName, DateStr: string;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 var
   JDN: LongInt;
 begin
@@ -1008,7 +1040,7 @@ begin
 end;
 
 function FindDateRange(NdxFileName, StartDateStr, EndDateStr: string;
-  var RowIds: TDBFRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
+  RowIds: PRowIdArray; MaxCount: Integer; var Count: Integer): Boolean;
 var
   JDNStart: LongInt;
   JDNEnd: LongInt;
