@@ -1,0 +1,47 @@
+Expression: devname 
+Key length: 30
+1 990 
+2 131 'PG' Productions
+3 2060 -MWD- Software
+4 2278 1 Step Software, Inc.
+5 2355 11th Dimension Entertainment
+6 4446 11th Dimension Entertainment
+7 3279 21st Century Entertainment Ltd
+8 5641 221B Software Development
+9 5945 221B Software Development
+10 5096 3000AD, Inc.
+Exact match search: Quicksilver Software, Inc.
+Exact recnos: [143, 586, 814, 2940, 7290] count= 5
+Prefix match search: Cosmi
+Prefix recnos: [117, 517, 1692, 2102, 2513, 2782, 5284, 5848, 6462, 7105] count= 12
+Prefix match search: King
+Prefix recnos: [6283, 5175, 2743, 2100, 6943, 5308, 6097, 5376, 1387, 3181] count= 33
+Prefix match search: SIE
+Prefix recnos: [831, 2248, 2919, 3178, 4198, 125, 173, 187, 214, 220] count= 87
+Exact number search: 1981
+Exact recnos: [645, 914, 1727, 1876, 1878, 2028, 2256, 2296, 2545, 2760] count= 25
+1981 counts
+Exact number count: 1981
+Count= 25
+1982 counts
+Exact number count: 1982
+Count= 124
+1983 counts
+Exact number count: 1983
+Count= 165
+1984 counts
+Exact number count: 1984
+Count= 160
+Exact range number search: 1982-1984
+Range recnos: [36, 119, 124, 219, 231, 284, 332, 393, 456, 584] count= 200
+Exact range number count: 1982-1984
+Count= 449
+Exact date search: 2022-08-25
+Exact recnos: [32, 95, 129, 134, 140, 145, 171, 191, 250, 265] count= 20
+Exact date count: 2022-08-25
+Count= 292
+Date range search: 2022-08-01 to 2022-08-30
+Count= 200
+Range recnos: [6431, 990, 2735, 32, 95, 129, 134, 140, 145, 171, 191, 250, 265, 267, 328, 344, 351, 395, 399, 407]
+Date range count: 2022-08-01 to 2022-08-30
+Count= 295
