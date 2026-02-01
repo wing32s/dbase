@@ -1,5 +1,5 @@
 # dbase
-A clean room implementation of dBase III and IV suitable for low-memory computers like an XT
+A clean room implementation of dBase III and IV database suitable for low-memory computers like an XT
 
 ## Features
 
