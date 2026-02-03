@@ -8,6 +8,8 @@ const
   
   { Fixed buffer size for streaming row ID results }
   RowIdBufferSize = 128;       { Match bitmap chunk size (128 records) }
+
+  DBFilterDebug = False;
   
   { Bitmap chunk configuration for disk-based AND operations }
   BitmapChunkSize = 128;       { Records per bitmap chunk (power of 2) }
@@ -101,16 +103,6 @@ function UnpackFilterIndexFile(var Filter: TDBFilterSpec): string;
 
 { Release global buffer used by DBFetchNextMatches }
 procedure DBFilterReleaseGlobals;
-
-{ Julian Day Number (JDN) conversion functions }
-function DateToJDN(Year, Month, Day: Integer): LongInt;
-{ Convert Gregorian calendar date to Julian Day Number }
-function JDNToDate(JDN: LongInt; var Year, Month, Day: Integer): Boolean;
-{ Convert Julian Day Number to Gregorian calendar date, returns False if invalid }
-function DBFDateStrToJDN(DateStr: string): LongInt;
-{ Convert dBASE date string "YYYYMMDD" to JDN, returns 0 if invalid }
-function JDNToDBFDateStr(JDN: LongInt): string;
-{ Convert JDN to dBASE date string "YYYYMMDD", returns empty string if invalid }
 
 implementation
 
@@ -438,6 +430,7 @@ var
   Buffer1, Buffer2, DestBuffer: array[1..BitmapChunkBytes] of Byte;
   BytesRead1, BytesRead2, BytesWritten: Integer;
   MoreData: Boolean;
+  IOR: Integer;
 begin
   if not CreateBitmapFile(DestF, DestBitmapFile) then
   begin
@@ -490,6 +483,7 @@ var
   Buffer1, Buffer2, DestBuffer: array[1..BitmapChunkBytes] of Byte;
   BytesRead1, BytesRead2, BytesWritten: Integer;
   MoreData: Boolean;
+  IOR: Integer;
 begin
   if not CreateBitmapFile(DestF, DestBitmapFile) then 
   begin
@@ -502,8 +496,13 @@ begin
   Assign(F2, BitmapFile2);
   Reset(F1, 1);
   Reset(F2, 1);
-  if IOResult <> 0 then
+  IOR := IOResult;
+  if IOR <> 0 then
   begin
+    if DBFilterDebug then
+      WriteLn('ANDBitmapFiles open failed IO=', IOR,
+        ' src1=', BitmapFile1, ' src2=', BitmapFile2,
+        ' dest=', DestBitmapFile);
     CloseBitmapFile(DestF);
     ANDBitmapFiles := False;
     Exit;
@@ -533,6 +532,8 @@ begin
   CloseBitmapFile(F1);
   CloseBitmapFile(F2);
   CloseBitmapFile(DestF);
+  if DBFilterDebug then
+    WriteLn('ANDBitmapFiles ok dest=', DestBitmapFile);
   ANDBitmapFiles := True;
 end;
 
@@ -964,79 +965,6 @@ begin
 end;
 
 { ============================================================================ }
-{ Julian Day Number (JDN) Conversion Functions                                }
-{ ============================================================================ }
-
-function DateToJDN(Year, Month, Day: Integer): LongInt;
-begin
-  DateToJDN := DateToJDNParts(Year, Month, Day);
-end;
-
-function JDNToDate(JDN: LongInt; var Year, Month, Day: Integer): Boolean;
-{ Convert Julian Day Number to Gregorian calendar date
-  Algorithm from: Fliegel, H. F. and van Flandern, T. C. (1968).
-  Returns False if JDN is invalid (< 0 or unreasonably large). }
-var
-  L, N, I, J: LongInt;
-begin
-  { Validate JDN range (roughly 1 AD to 9999 AD) }
-  if (JDN < 1721426) or (JDN > 5373484) then
-  begin
-    Year := 0;
-    Month := 0;
-    Day := 0;
-    JDNToDate := False;
-    Exit;
-  end;
-  
-  { Standard reverse JDN algorithm }
-  L := JDN + 68569;
-  N := (4 * L) div 146097;
-  L := L - ((146097 * N + 3) div 4);
-  I := (4000 * (L + 1)) div 1461001;
-  L := L - ((1461 * I) div 4) + 31;
-  J := (80 * L) div 2447;
-  Day := L - ((2447 * J) div 80);
-  L := J div 11;
-  Month := J + 2 - (12 * L);
-  Year := 100 * (N - 49) + I + L;
-  
-  JDNToDate := True;
-end;
-
-function DBFDateStrToJDN(DateStr: string): LongInt;
-begin
-  DBFDateStrToJDN := DBFUTIL.DBFDateStrToJDN(DateStr);
-end;
-
-function JDNToDBFDateStr(JDN: LongInt): string;
-{ Convert Julian Day Number to dBASE date string "YYYYMMDD"
-  Returns empty string if JDN is invalid. }
-var
-  Year, Month, Day: Integer;
-  YearStr, MonthStr, DayStr: string;
-begin
-  if not JDNToDate(JDN, Year, Month, Day) then
-  begin
-    JDNToDBFDateStr := '';
-    Exit;
-  end;
-  
-  { Format as YYYYMMDD }
-  Str(Year:4, YearStr);
-  Str(Month:2, MonthStr);
-  Str(Day:2, DayStr);
-  
-  { Pad with zeros }
-  if Month < 10 then
-    MonthStr := '0' + TrimString(MonthStr);
-  if Day < 10 then
-    DayStr := '0' + TrimString(DayStr);
-  
-  JDNToDBFDateStr := YearStr + MonthStr + DayStr;
-end;
-
-{ ============================================================================ }
 { Disk-based Bitmap Operations for Large AND Operations                        }
 { ============================================================================ }
 
@@ -1051,6 +979,8 @@ begin
   {$I+}
   IOR := IOResult;
   Result := (IOR = 0);
+  if DBFilterDebug and not Result then
+    WriteLn('CreateBitmapFile failed: ', FileName, ' IO=', IOR);
   CreateBitmapFile := Result;
 end;
 

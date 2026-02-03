@@ -90,21 +90,44 @@ function MemoPath(BaseName: string; var OutPath: string): Boolean;
 var
   DotPos: Integer;
   NamePart, ExtPart: string;
+  SepPos: Integer;
+  PathPart, FilePart: string;
 begin
-  DotPos := 0;
-  DotPos := Length(BaseName);
-  while (DotPos >= 1) and (BaseName[DotPos] <> '.') do
-    Dec(DotPos);
-  if (DotPos >= 1) and (BaseName[DotPos] = '.') then
+  SepPos := Length(BaseName);
+  while (SepPos >= 1) and (BaseName[SepPos] <> '\') and (BaseName[SepPos] <> '/') do
+    Dec(SepPos);
+  if (SepPos >= 1) and ((BaseName[SepPos] = '\') or (BaseName[SepPos] = '/')) then
   begin
-    NamePart := Copy(BaseName, 1, DotPos - 1);
-    ExtPart := Copy(BaseName, DotPos + 1, 255);
+    PathPart := Copy(BaseName, 1, SepPos);
+    FilePart := Copy(BaseName, SepPos + 1, 255);
   end
   else
   begin
-    NamePart := BaseName;
+    PathPart := '';
+    FilePart := BaseName;
+  end;
+
+  if Length(FilePart) = 0 then
+  begin
+    MemoPath := False;
+    OutPath := '';
+    Exit;
+  end;
+
+  DotPos := Length(FilePart);
+  while (DotPos >= 1) and (FilePart[DotPos] <> '.') do
+    Dec(DotPos);
+  if (DotPos >= 1) and (FilePart[DotPos] = '.') then
+  begin
+    NamePart := Copy(FilePart, 1, DotPos - 1);
+    ExtPart := Copy(FilePart, DotPos + 1, 255);
+  end
+  else
+  begin
+    NamePart := FilePart;
     ExtPart := '';
   end;
+
   if (Length(NamePart) = 0) or (Length(NamePart) > 8) then
   begin
     MemoPath := False;
@@ -117,10 +140,11 @@ begin
     OutPath := '';
     Exit;
   end;
+
   if (Length(ExtPart) = 0) then
-    OutPath := NamePart + '.DBT'
+    OutPath := PathPart + NamePart + '.DBT'
   else
-    OutPath := NamePart + '.' + ExtPart;
+    OutPath := PathPart + NamePart + '.' + ExtPart;
   MemoPath := True;
 end;
 

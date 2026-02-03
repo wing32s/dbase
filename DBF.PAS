@@ -17,6 +17,7 @@ type
 
 const
   DBFMaxFields = 64;
+  DBFDebug = False;
 
   DBFLangUS = $01;
   DBFLangWesternEurope = $02;
@@ -670,6 +671,8 @@ var
   IoCode: Integer;
 begin
   DBFFileCreate := False;
+  if DBFDebug then
+    WriteLn('DBFFileCreate: start ', FileName);
   DBFFileAlloc(Dbf);
   if Dbf = nil then
     Exit;
@@ -677,20 +680,32 @@ begin
   if not DatabasePath(FileName, FileName) then
     Exit;
   Assign(P^.F, FileName);
+  if DBFDebug then
+    WriteLn('DBFFileCreate: Rewrite ', FileName);
   {$I-}
   Rewrite(P^.F, 1);
   IoCode := IOResult;
   {$I+}
   if IoCode <> 0 then
     Exit;
+  if DBFDebug then
+    WriteLn('DBFFileCreate: InitDBFHeader');
   InitDBFHeader(Header);
+  if DBFDebug then
+    WriteLn('DBFFileCreate: WriteDBFHeader');
   WriteDBFHeader(P^.F, Header);
   P^.Header := Header;
   P^.IsOpen := True;
 
   if P^.Header.Version = $05 then
+  begin
+    if DBFDebug then
+      WriteLn('DBFFileCreate: DBFMemoCreate');
     DBFMemoCreate(FileName);
+  end;
   DBFFileCreate := True;
+  if DBFDebug then
+    WriteLn('DBFFileCreate: done');
 end;
 
 function DBFFileCreateDBase3(var Dbf: PDBFFile; FileName: string; Header: TDBFHeader): Boolean;
@@ -868,7 +883,8 @@ begin
   RecordCount := GetActualDBFRowCount(P^.F, P^.Header);
   if RecordCount <= 0 then
   begin
-    DBFFileSeekToEnd := False;
+    SeekToFirstRow(P^.F, P^.Header);
+    DBFFileSeekToEnd := True;
     Exit;
   end;
   SeekToRow(P^.F, P^.Header, RecordCount - 1);
